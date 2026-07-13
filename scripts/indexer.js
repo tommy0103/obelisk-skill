@@ -5,7 +5,7 @@ import { persist } from "./persist.js";
 import { nodeSqliteTransactionAdapter } from "./tx.js";
 import { acquireWriterLease, writerLockPathFor } from "./writer-lease.js";
 import { runRetryableWriteTransaction, isBeginBusyFailure, hasUnusableTransaction } from "./write-coordinator.js";
-import { parse as claudeParse } from "./providers/claude.js";
+import { CLAUDE_INPUT_TOKEN_SEMANTICS_MARKER, parse as claudeParse, } from "./providers/claude.js";
 import { parse as codexParse } from "./providers/codex.js";
 const HISTORY_PATH = path.join(CLAUDE_DIR, 'history.jsonl');
 function errorMessage(error) {
@@ -210,7 +210,15 @@ function buildIndex({ force = false } = {}) {
             return ownershipAfterLease;
         const db = openDb();
         const txDb = nodeSqliteTransactionAdapter(db);
+        const claudeInputMarkerMissing = !db.prepare('SELECT jsonl_path FROM index_state WHERE jsonl_path = ?').get(CLAUDE_INPUT_TOKEN_SEMANTICS_MARKER);
+        const claudeInputSemanticsOutdated = claudeInputMarkerMissing && Boolean(db.prepare(`
+      SELECT 1 FROM messages
+      WHERE COALESCE(source, 'claude') = 'claude'
+        AND (input_tokens IS NOT NULL OR output_tokens IS NOT NULL)
+      LIMIT 1
+    `).get());
         const skippedFiles = [];
+        let claudeInputMigrationFailed = false;
         try {
             try {
                 if (force) {
@@ -264,9 +272,10 @@ function buildIndex({ force = false } = {}) {
                             // (docs/adr/0001). needsReindex keeps the "skip unchanged file" fast path;
                             // the cursor's line count drives incremental resume inside parse().
                             const { needed, skip } = needsReindex(db, f.path);
-                            if (needed) {
+                            if (needed || claudeInputSemanticsOutdated) {
                                 const unit = { key: f.path, sessionId: f.sessionId, project: f.project, isSubagent: f.isSubagent, agentId: f.agentId };
-                                persist(db, unit, claudeParse(unit, skip > 0 ? `0:${skip}` : null));
+                                const cursor = !claudeInputSemanticsOutdated && skip > 0 ? `0:${skip}` : null;
+                                persist(db, unit, claudeParse(unit, cursor));
                             }
                             indexSubagentMeta(db, f);
                         }
@@ -278,6 +287,9 @@ function buildIndex({ force = false } = {}) {
                     }
                     if (hasUnusableTransaction(e))
                         throw e;
+                    if (claudeInputSemanticsOutdated && f.source !== 'codex') {
+                        claudeInputMigrationFailed = true;
+                    }
                     // A per-file failure is skippable: log and move on.
                     const error = e;
                     const message = errorMessage(e);
@@ -296,6 +308,10 @@ function buildIndex({ force = false } = {}) {
                     db.exec("INSERT INTO messages_fts(messages_fts) VALUES('rebuild')");
                     rebuildMemoryFts(db);
                     db.prepare("INSERT OR REPLACE INTO index_state (jsonl_path, mtime, lines_processed) VALUES ('__last_build__', ?, 0)").run(Date.now());
+                    if (!claudeInputSemanticsOutdated || !claudeInputMigrationFailed) {
+                        db.prepare('INSERT OR REPLACE INTO index_state (jsonl_path, mtime, lines_processed) VALUES (?, ?, 0)')
+                            .run(CLAUDE_INPUT_TOKEN_SEMANTICS_MARKER, Date.now());
+                    }
                 }, { label: 'finalize' });
             }
             catch (error) {
