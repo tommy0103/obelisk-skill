@@ -7,7 +7,7 @@ description: >
   Memory: when the user says "记住这个", "remember this", "写入记忆", "save this conclusion", or when you determine a retrieval result contains a conclusion worth persisting.
 allowed-tools:
   - Read
-  - Bash(node:*)
+  - Bash(obelisk:*)
   - Write
 ---
 
@@ -32,12 +32,10 @@ sessions by default.
 
 ## Quick Start
 
-The skill directory is provided as `$SKILL_DIR` at invocation time.
-
 Fast keyword search:
 
 ```bash
-node $SKILL_DIR/scripts/runtime.js --search "keyword"
+obelisk --search "keyword"
 ```
 
 Custom query:
@@ -46,7 +44,7 @@ Custom query:
 2. Run:
 
    ```bash
-   node $SKILL_DIR/scripts/runtime.js --query /tmp/q.mjs
+   obelisk --query /tmp/q.mjs
    ```
 
 3. Parse JSON stdout and answer with concise evidence.
@@ -203,8 +201,8 @@ escape hatch for exact structured joins and aggregations after the helper-first
 surface is insufficient; it is not the default retrieval entry point.
 
 Before writing non-trivial SQL, read `references/schema.md`. It is the raw SQL
-field/join quick reference. The executable DDL lives in `scripts/schema.sql`;
-use the SQL file only when checking source alignment. Common safe joins:
+field/join quick reference. The executable DDL is CLI-owned and is deliberately
+not duplicated in this docs-only skill. Common safe joins:
 
 - `tool_calls` does not have timestamps. Join `messages m ON m.uuid = tc.message_uuid`.
 - `tool_results` does not have timestamps. Join `messages m ON m.uuid = tr.message_uuid`.
@@ -315,7 +313,7 @@ return remember({
 Run the registration script with:
 
 ```bash
-node $SKILL_DIR/scripts/runtime.js --attune /tmp/register-memory.mjs
+obelisk --attune /tmp/register-memory.mjs
 ```
 
 `--attune` exposes only memory mutation helpers: `remember()` and `forget()`.
