@@ -237,7 +237,7 @@ Returns:
     projects,
     sessions,
     memories,
-    sources: [{ source: 'claude' | 'codex' | 'deepseek' | 'kimi' | 'omp' | 'pi' | 'zcode', session_count, last_session_at }]
+    sources: [{ source: 'claude' | 'codex' | 'deepseek' | 'kimi' | 'kiro' | 'omp' | 'pi' | 'zcode', session_count, last_session_at }]
   }
 }
 ```
