@@ -112,7 +112,7 @@ Full-text search across all indexed message text using FTS5.
 | `opts.after` | `string` | ISO lower bound on message timestamp |
 | `opts.before` | `string` | ISO upper bound on message timestamp |
 | `opts.cwd` | `string` | SQL `LIKE` filter over `messages.cwd` |
-| `opts.source` | `string` | Provider ID such as `"claude"`, `"codex"`, `"deepseek"`, `"kimi"`, `"omp"`, `"pi"`, or `"zcode"` |
+| `opts.source` | `string` | Provider ID such as `"claude"`, `"codex"`, `"deepseek"`, `"kimi"`, `"kiro"`, `"omp"`, `"pi"`, `"opencode"`, or `"zcode"` |
 | `opts.includeMeta` | `boolean` | Include `is_meta=1` rows, default false |
 | `opts.includeInactive` | `boolean` | Include provider-attested superseded rows, default false |
 | `opts.fallback` | `'or'` | On zero hits only, retry safe tokens joined by OR |
@@ -316,7 +316,7 @@ Returns:
     projects,
     sessions,
     memories,
-    sources: [{ source: 'claude' | 'codex' | 'deepseek' | 'kimi' | 'kiro' | 'omp' | 'pi' | 'zcode', session_count, last_session_at }]
+    sources: [{ source: 'claude' | 'codex' | 'deepseek' | 'kimi' | 'kiro' | 'omp' | 'pi' | 'opencode' | 'zcode', session_count, last_session_at }]
   }
 }
 ```
@@ -335,7 +335,7 @@ Session rows ordered by `ended_at` descending. Passing a number is treated as
 | `opts.before` | `string` | ISO upper bound on `started_at` |
 | `opts.limit` | `number` | Max rows, default 50 |
 | `opts.branch` | `string` | Exact git branch |
-| `opts.source` | `string` | Provider ID such as `"claude"`, `"codex"`, `"deepseek"`, `"kimi"`, `"omp"`, `"pi"`, or `"zcode"`; omit for all |
+| `opts.source` | `string` | Provider ID such as `"claude"`, `"codex"`, `"deepseek"`, `"kimi"`, `"kiro"`, `"omp"`, `"pi"`, `"opencode"`, or `"zcode"`; omit for all |
 | `opts.sessionId` | `string` | Exact session ID |
 | `opts.sessions` | `string[]` | Restrict to session IDs |
 
@@ -457,7 +457,9 @@ Returns:
 ```
 
 `raw()` resolves main-session, subagent, workflow-agent, and Codex JSONL paths
-from indexed metadata. Hidden targets always return `null`.
+from indexed metadata. OpenCode resolves projected SQLite store rows (V2
+`session_message` or V1 `message`/`part`) with extracted message text. Hidden
+targets always return `null`.
 
 ---
 
